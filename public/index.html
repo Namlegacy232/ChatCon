@@ -5,128 +5,162 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Anon Chat</title>
   <style>
-    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(180deg,#0b1020,#0f172a); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
-    .wrap { width: min(960px, 96vw); display:grid; gap:12px; }
-    .header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:rgba(17,24,39,.7); border:1px solid rgba(255,255,255,.06); border-radius:16px; backdrop-filter: blur(8px); }
-    .brand { display:flex; gap:10px; align-items:center; font-weight:700; letter-spacing:.3px; }
-    .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); }
-    .me { font-size:14px; color:var(--muted) }
-    .online { font-size:14px; color:var(--muted); }
-    .chat { height:min(62vh, 560px); background:rgba(17,24,39,.6); border:1px solid rgba(255,255,255,.06); border-radius:16px; overflow:auto; padding:10px; scroll-behavior:smooth; }
-    .msg { display:flex; gap:10px; padding:8px 10px; border-radius:12px; margin:6px 2px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.05);}
-    .msg.me { background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.22); }
-    .name { font-weight:600; }
-    .time { font-size:12px; color:var(--muted); margin-left:6px; }
-    .sys { text-align:center; color:var(--muted); font-size:13px; margin:8px 0; }
-    .typing { font-size:12px; color:var(--muted); height:18px; padding-left:6px; }
-    .input { display:flex; gap:10px; align-items:center; background:rgba(17,24,39,.7); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:10px; }
-    input[type="text"] { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-size:16px; }
-    button { border:none; background:var(--accent); color:#081a0f; font-weight:700; padding:10px 16px; border-radius:12px; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    code { background:#0b1020; padding:0 6px; border-radius:6px; }
+    body {
+      margin:0;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background:linear-gradient(180deg,#0f172a,#1e293b);
+      color:#f1f5f9;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+    }
+    .wrap {
+      width:min(900px,95%);
+      height:90vh;
+      display:flex;
+      flex-direction:column;
+      background:#111827cc;
+      border-radius:20px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.4);
+      overflow:hidden;
+    }
+    .header {
+      background:#1e293b;
+      padding:12px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-weight:600;
+    }
+    .chat {
+      flex:1;
+      padding:16px;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .msg {
+      max-width:70%;
+      padding:10px 14px;
+      border-radius:14px;
+      position:relative;
+      animation:fadeIn .2s ease-in;
+    }
+    .msg .meta {
+      font-size:12px;
+      opacity:0.7;
+      margin-bottom:3px;
+    }
+    .msg.you {
+      align-self:flex-start;
+      background:#374151;
+    }
+    .msg.me {
+      align-self:flex-end;
+      background:#22c55e;
+      color:#083418;
+    }
+    .sys {
+      text-align:center;
+      font-size:13px;
+      color:#94a3b8;
+      margin:6px 0;
+    }
+    .input {
+      display:flex;
+      padding:10px;
+      background:#1e293b;
+    }
+    input[type=text] {
+      flex:1;
+      padding:10px;
+      border:none;
+      border-radius:10px;
+      outline:none;
+      background:#334155;
+      color:#f1f5f9;
+    }
+    button {
+      margin-left:10px;
+      padding:10px 16px;
+      border:none;
+      border-radius:10px;
+      background:#22c55e;
+      color:#083418;
+      font-weight:600;
+      cursor:pointer;
+    }
+    @keyframes fadeIn {
+      from { opacity:0; transform:translateY(5px); }
+      to { opacity:1; transform:translateY(0); }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
-      <div class="brand"><span class="dot"></span> Anon Chat</div>
-      <div class="me">Bạn: <b id="my-name"></b></div>
-      <div class="online">Đang online: <b id="online">1</b></div>
+      <div>Anon Chat</div>
+      <div id="online">0 online</div>
     </div>
-
-    <div id="chat" class="chat" aria-live="polite"></div>
-    <div class="typing" id="typing"></div>
-
-    <form id="form" class="input" autocomplete="off">
-      <input id="m" type="text" placeholder="Nhập tin nhắn..." maxlength="500" />
-      <button id="send" type="submit">Gửi</button>
+    <div id="chat" class="chat"></div>
+    <form id="form" class="input">
+      <input id="m" type="text" placeholder="Nhập tin nhắn..." maxlength="500" autocomplete="off"/>
+      <button>Gửi</button>
     </form>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-
-    function randomName() {
-      const animals = ["Tiger","Panda","Eagle","Fox","Dolphin","Falcon","Otter","Koala","Orca","Lynx","Mantis","Wolf","Hawk","Bison","Seal","Crab","Mole","Owlet","Koi","Drake"];
-      const n = Math.floor(Math.random()*900)+100;
-      return "Guest-" + animals[Math.floor(Math.random()*animals.length)] + "-" + n;
-    }
-    const myName = localStorage.getItem("anon_name") || randomName();
-    localStorage.setItem("anon_name", myName);
-    document.getElementById("my-name").textContent = myName;
-
-    // Gửi chào để server ghi nhận tên
-    socket.emit("hello", myName);
-
     const chat = document.getElementById("chat");
     const online = document.getElementById("online");
-    const typingEl = document.getElementById("typing");
-    const form = document.getElementById("form");
     const input = document.getElementById("m");
+    const form = document.getElementById("form");
 
-    // Escape HTML để tránh XSS khi hiển thị tin nhắn
     function esc(s) {
-      return (s || "").toString()
-        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-        .replace(/'/g,"&#39;");
+      return (s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
     }
 
-    function addSys(text) {
+    const myName = "Guest-" + Math.floor(Math.random()*1000);
+    socket.emit("hello", myName);
+
+    function addSys(msg) {
       const div = document.createElement("div");
       div.className = "sys";
-      div.innerHTML = esc(text);
+      div.innerHTML = esc(msg);
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function addMsg({name, message, at, id}) {
-      const mine = socket.id === id;
+    function addMsg({name,message,at,id}) {
       const div = document.createElement("div");
-      div.className = "msg" + (mine ? " me":"");
-      div.innerHTML = `
-        <div class="bubble">
-          <span class="name">${esc(name)}</span>
-          <span class="time">${esc(at)}</span>
-          <div class="text">${esc(message)}</div>
-        </div>`;
+      div.className = "msg " + (id===socket.id ? "me":"you");
+      div.innerHTML = `<div class="meta">${esc(name)} • ${esc(at)}</div><div>${esc(message)}</div>`;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    // Nhận sự kiện hệ thống
-    socket.on("sys", (e) => {
-      online.textContent = e.online ?? online.textContent;
-      if (e.type === "join") addSys(`${e.at} • <b>${esc(e.name)}</b> đã vào phòng`);
-      if (e.type === "leave") addSys(`${e.at} • <b>${esc(e.name)}</b> đã rời phòng`);
+    socket.on("sys", e => {
+      online.textContent = (e.online||0) + " online";
+      if(e.type==="join") addSys(`${e.at} • ${e.name} đã vào`);
+      if(e.type==="leave") addSys(`${e.at} • ${e.name} đã rời`);
     });
 
-    // Nhận tin nhắn chat
     socket.on("chat", addMsg);
 
-    // Trạng thái đang gõ
-    let typingTimer = null;
-    input.addEventListener("input", () => {
-      socket.emit("typing", true);
-      clearTimeout(typingTimer);
-      typingTimer = setTimeout(() => socket.emit("typing", false), 900);
+    // nhận lịch sử tin nhắn
+    socket.on("history", msgs => {
+      msgs.forEach(addMsg);
     });
 
-    socket.on("typing", ({name, isTyping}) => {
-      typingEl.textContent = isTyping ? `${name} đang gõ...` : "";
-    });
-
-    // Gửi tin nhắn
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", e=>{
       e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      socket.emit("chat", text);
-      input.value = "";
-      socket.emit("typing", false);
+      const txt = input.value.trim();
+      if(!txt) return;
+      socket.emit("chat", txt);
+      input.value="";
     });
   </script>
 </body>

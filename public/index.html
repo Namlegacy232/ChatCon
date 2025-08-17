@@ -1,281 +1,183 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Anon Chat + Reactions + Video</title>
-<style>
-  :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#22c55e;}
-  *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#0b1020,#0f172a);color:var(--text);height:100vh;display:flex;align-items:center;justify-content:center}
-  .wrap{width:min(960px,96vw);height:min(92vh,760px);display:grid;grid-template-rows:auto 1fr auto;gap:10px}
-  .header{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px;background:rgba(17,24,39,.7);border:1px solid rgba(255,255,255,.06);border-radius:16px;backdrop-filter:blur(8px)}
-  .left{display:flex;align-items:center;gap:10px;font-weight:700}.dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
-  .right{display:flex;gap:10px;align-items:center}
-  #search{background:#283248;border:1px solid rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:8px 10px;min-width:200px}
-  .online{font-size:14px;color:var(--muted)}
-  .chat{overflow:auto;padding:10px;background:rgba(17,24,39,.6);border:1px solid rgba(255,255,255,.06);border-radius:16px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
-  .msg{max-width:76%;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:6px;position:relative}
-  .me{align-self:flex-end;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.22)}
-  .meta{font-size:12px;color:var(--muted)} .text{white-space:pre-wrap;word-wrap:break-word}
-  .actions{display:flex;gap:8px;align-items:center;font-size:18px}
-  .reacts{font-size:14px;display:flex;gap:6px;align-items:center}
-  .sys{text-align:center;color:var(--muted);font-size:13px;margin:6px 0}
-  .input{display:flex;gap:10px;align-items:center;background:rgba(17,24,39,.7);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:8px}
-  #m{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:16px}
-  button{border:none;background:var(--accent);color:#082614;font-weight:700;padding:10px 14px;border-radius:12px;cursor:pointer}
-  .picker{position:absolute;bottom:100%;left:0;transform:translateY(-6px);background:#0b1020;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px;display:none;gap:4px}
-  .picker button{background:transparent;padding:6px 8px;border-radius:8px}
-  .msg:hover .picker{display:flex}
-  /* Video modal */
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:10px}
-  .modal .box{background:#0c1224;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;display:grid;gap:8px;width:min(920px,96vw)}
-  .videos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  video{width:100%;height:320px;background:#000;border-radius:12px}
-  .row{display:flex;justify-content:space-between;align-items:center}
-</style>
+  <meta charset="UTF-8">
+  <title>Chat App</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      background: linear-gradient(135deg, #74ABE2 0%, #5563DE 100%);
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    header {
+      padding:12px;
+      backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.2);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+    header input {
+      flex:1;
+      padding:10px 14px;
+      border:none;
+      border-radius:20px;
+      background: rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+      outline:none;
+      font-size:15px;
+    }
+    #messages {
+      flex:1;
+      overflow-y:auto;
+      padding:15px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .msg {
+      max-width:70%;
+      padding:12px 16px;
+      border-radius:20px;
+      backdrop-filter: blur(15px);
+      background: rgba(255,255,255,0.25);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      animation: fadeIn 0.3s ease;
+      position: relative;
+    }
+    .me { align-self:flex-end; background: rgba(255,255,255,0.4);}
+    .you { align-self:flex-start;}
+    .meta {
+      font-size:12px;
+      opacity:0.7;
+      margin-bottom:4px;
+    }
+    .text { font-size:15px; white-space:pre-wrap; }
+    .reactions {
+      margin-top:5px;
+      font-size:14px;
+    }
+    footer {
+      padding:12px;
+      display:flex;
+      gap:10px;
+      backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.2);
+    }
+    footer input {
+      flex:1;
+      padding:12px 16px;
+      border:none;
+      border-radius:20px;
+      background: rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+      outline:none;
+      font-size:15px;
+    }
+    footer button {
+      border:none;
+      border-radius:50%;
+      width:45px;
+      height:45px;
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+      cursor:pointer;
+      font-size:18px;
+      transition: all .2s;
+    }
+    footer button:hover {
+      transform:scale(1.1);
+    }
+    @keyframes fadeIn {
+      from {opacity:0; transform:translateY(10px);}
+      to {opacity:1; transform:translateY(0);}
+    }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="header">
-      <div class="left"><span class="dot"></span> Anon Chat</div>
-      <div class="right">
-        <input id="search" type="search" placeholder="Tìm tin nhắn...">
-        <div class="online">Online: <b id="online">0</b></div>
-      </div>
-    </div>
+  <header>
+    <input id="search" type="search" placeholder="🔍 Tìm tin nhắn...">
+  </header>
 
-    <div id="chat" class="chat" aria-live="polite"></div>
+  <div id="messages"></div>
 
-    <form id="form" class="input" autocomplete="off">
-      <input id="m" type="text" placeholder="Nhập tin nhắn..." maxlength="500"/>
-      <button id="send" type="submit">Gửi</button>
-    </form>
-  </div>
+  <footer>
+    <input id="msg" placeholder="Nhập tin nhắn...">
+    <button id="send">➤</button>
+  </footer>
 
-  <!-- Video modal -->
-  <div id="videoModal" class="modal">
-    <div class="box">
-      <div class="row">
-        <div><b>Video call</b> — <span id="callWith">Đang kết nối…</span></div>
-        <div>
-          <button id="btnHang">Kết thúc</button>
-        </div>
-      </div>
-      <div class="videos">
-        <video id="myVideo" autoplay muted playsinline></video>
-        <video id="theirVideo" autoplay playsinline></video>
-      </div>
-    </div>
-  </div>
+<script>
+  const socket = io();
+  const messagesDiv = document.getElementById("messages");
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    // ---------- Helpers ----------
-    const socket = io();
-    const chat = document.getElementById("chat");
-    const online = document.getElementById("online");
-    const input = document.getElementById("m");
-    const form = document.getElementById("form");
-    const search = document.getElementById("search");
-    const videoModal = document.getElementById("videoModal");
-    const myVideo = document.getElementById("myVideo");
-    const theirVideo = document.getElementById("theirVideo");
-    const btnHang = document.getElementById("btnHang");
-    const callWith = document.getElementById("callWith");
+  function esc(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
-    function esc(s){
-      return (s||"").toString()
-        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-        .replace(/'/g,"&#39;");
-    }
-    function randomName(){
-      const animals=["Tiger","Panda","Eagle","Fox","Dolphin","Falcon","Otter","Koala","Orca","Lynx","Wolf","Hawk","Bison","Seal","Koi"];
-      const n=Math.floor(Math.random()*900)+100;
-      return "Guest-"+animals[Math.floor(Math.random()*animals.length)]+"-"+n;
-    }
+  function renderReactions(reactions){
+    if(!reactions) return "";
+    const counts={};
+    Object.values(reactions).forEach(e=>counts[e]=(counts[e]||0)+1);
+    return Object.entries(counts).map(([e,c])=>`${e} ${c}`).join(" ");
+  }
 
-    // ---------- Identity ----------
-    const myName = localStorage.getItem("anon_name") || randomName();
-    localStorage.setItem("anon_name", myName);
-    socket.emit("hello", myName);
-
-    // ---------- UI render ----------
-    function addSys(text){
-      const div=document.createElement("div");
-      div.className="sys"; div.innerHTML=esc(text);
-      chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
-    }
-
-    function reactionsToCounts(reactions){
-      const counts={};
-      Object.values(reactions||{}).forEach(e=>counts[e]=(counts[e]||0)+1);
-      return counts; // { "❤️": 2, "👍": 1 }
-    }
-    function countsToString(counts){
-      return Object.entries(counts).map(([e,c])=>`${e} ${c}`).join(" ");
-    }
-
-    function renderMsg(msg){
-      const el=document.createElement("div");
-      el.className="msg"+(msg.sender===socket.id?" me":"");
-      el.dataset.id=msg.id;
-      el.dataset.text=msg.message.toLowerCase();
-      el.innerHTML=`
-        <div class="meta">${esc(msg.name)} • ${esc(msg.at)}</div>
-        <div class="text">${esc(msg.message)}</div>
-        <div class="actions">
-          <span class="reacts">${countsToString(reactionsToCounts(msg.reactions))}</span>
-          <div class="picker">
-            <button title="Tim">❤️</button>
-            <button title="Like">👍</button>
-            <button title="Phẫn nộ">😡</button>
-            <button title="Haha">😂</button>
-            <button title="Bỏ">✖️</button>
-          </div>
-          ${msg.sender!==socket.id ? `<button class="btnCall" title="Gọi video">📹</button>`:""}
-        </div>
-      `;
-
-      // reaction handlers
-      const picker=el.querySelector(".picker");
-      picker.addEventListener("click",(e)=>{
-        if(e.target.tagName!=="BUTTON")return;
-        const emo=e.target.textContent.trim();
-        socket.emit("react",{msgId:msg.id, emoji: (emo==="✖️")? null : emo});
-      });
-
-      // call button
-      const btn=el.querySelector(".btnCall");
-      if(btn){
-        btn.addEventListener("click",()=> startCall(msg.sender, msg.name));
-      }
-      return el;
-    }
-
-    function upsertMsg(msg){
-      let el=[...document.querySelectorAll(".msg")].find(d=>d.dataset.id==msg.id);
-      if(!el){ el=renderMsg(msg); chat.appendChild(el); }
-      else{
-        // update reacts text if already exists
-        const reacts=el.querySelector(".reacts");
-        reacts.textContent = countsToString(reactionsToCounts(msg.reactions||{}));
-      }
-      chat.scrollTop=chat.scrollHeight;
-    }
-
-    // ---------- Sockets ----------
-    socket.on("sys", e=>{
-      if(e.online!=null) online.textContent=e.online;
-      if(e.type==="join") addSys(`${e.at} • ${e.name} đã vào`);
-      if(e.type==="leave") addSys(`${e.at} • ${e.name} đã rời`);
+  function renderMsg(msg){
+    const div=document.createElement("div");
+    div.className="msg "+(msg.sender===socket.id?"me":"you");
+    div.dataset.id=msg.id;
+    div.innerHTML=`
+      <div class="meta">${esc(msg.name)} • ${esc(msg.at)}</div>
+      <div class="text">${esc(msg.message)}</div>
+      <div class="reactions">${renderReactions(msg.reactions)}</div>
+    `;
+    div.addEventListener("click",()=>{
+      const emoji=prompt("Chọn reaction ❤️ 👍 😡 😂");
+      if(emoji) socket.emit("react",{msgId:msg.id,emoji});
     });
+    return div;
+  }
 
-    socket.on("history", msgs=>{
-      msgs.forEach(m=> upsertMsg(m));
-      chat.scrollTop=chat.scrollHeight;
-    });
+  socket.on("history", list=>{
+    list.forEach(m=>messagesDiv.appendChild(renderMsg(m)));
+    messagesDiv.scrollTop=messagesDiv.scrollHeight;
+  });
 
-    socket.on("chat", msg=> upsertMsg(msg));
+  socket.on("chat", msg=>{
+    messagesDiv.appendChild(renderMsg(msg));
+    messagesDiv.scrollTop=messagesDiv.scrollHeight;
+  });
 
-    socket.on("updateMsg", ({id,reactions})=>{
-      const el=[...document.querySelectorAll(".msg")].find(d=>d.dataset.id==id);
-      if(el){
-        const reacts=el.querySelector(".reacts");
-        reacts.textContent = countsToString(reactionsToCounts(reactions||{}));
-      }
-    });
+  socket.on("updateMsg", ({id,reactions})=>{
+    const el=[...document.querySelectorAll(".msg")].find(d=>d.dataset.id==id);
+    if(el) el.querySelector(".reactions").textContent=renderReactions(reactions);
+  });
 
-    // send message
-    form.addEventListener("submit",e=>{
-      e.preventDefault();
-      const txt=input.value.trim();
-      if(!txt) return;
-      socket.emit("chat", txt);
-      input.value="";
-    });
+  document.getElementById("send").onclick=sendMsg;
+  document.getElementById("msg").addEventListener("keypress",e=>{
+    if(e.key==="Enter") sendMsg();
+  });
 
-    // search
-    search.addEventListener("input", e=>{
-      const q=e.target.value.toLowerCase();
-      document.querySelectorAll(".msg").forEach(m=>{
-        const t = (m.dataset.text||"");
-        m.style.display = t.includes(q) ? "" : "none";
-      });
-    });
-
-    // ---------- WebRTC 1–1 ----------
-    let pc=null, localStream=null, peerId=null, peerName="";
-
-    async function getLocalStream(){
-      if(localStream) return localStream;
-      localStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-      myVideo.srcObject = localStream;
-      return localStream;
+  function sendMsg(){
+    const inp=document.getElementById("msg");
+    if(inp.value.trim()){
+      socket.emit("chat", inp.value.trim());
+      inp.value="";
     }
+  }
 
-    function createPC(){
-      pc = new RTCPeerConnection({
-        iceServers: [{urls:"stun:stun.l.google.com:19302"}]
-      });
-      pc.onicecandidate = (e)=>{
-        if(e.candidate && peerId) socket.emit("webrtc-candidate",{to:peerId,candidate:e.candidate});
-      };
-      pc.ontrack = (e)=>{ theirVideo.srcObject = e.streams[0]; };
-      return pc;
-    }
-
-    async function startCall(toId, toName){
-      peerId = toId; peerName = toName || "";
-      callWith.textContent = "Đang gọi " + (peerName||peerId);
-      videoModal.style.display="flex";
-      pc = createPC();
-      const stream = await getLocalStream();
-      stream.getTracks().forEach(t=> pc.addTrack(t, stream));
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit("webrtc-offer", { to: peerId, offer });
-    }
-
-    socket.on("webrtc-offer", async ({ from, offer })=>{
-      // nhận cuộc gọi
-      peerId = from; callWith.textContent = "Đang kết nối với " + from;
-      videoModal.style.display="flex";
-      pc = createPC();
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const stream = await getLocalStream();
-      stream.getTracks().forEach(t=> pc.addTrack(t, stream));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { to: from, answer });
+  document.getElementById("search").addEventListener("input",e=>{
+    const q=e.target.value.toLowerCase();
+    document.querySelectorAll(".msg").forEach(m=>{
+      const text=m.querySelector(".text").textContent.toLowerCase();
+      m.style.display=text.includes(q)?"":"none";
     });
-
-    socket.on("webrtc-answer", async ({ from, answer })=>{
-      if(!pc) return;
-      await pc.setRemoteDescription(new RTCSessionDescription(answer));
-    });
-
-    socket.on("webrtc-candidate", async ({ from, candidate })=>{
-      if(!pc) return;
-      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
-    });
-
-    function endCall(send=true){
-      try{ if(pc) pc.getSenders().forEach(s=>s.track && s.track.stop()); }catch{}
-      try{ if(pc) pc.close(); }catch{}
-      pc=null;
-      // giữ localStream để lần sau khỏi xin lại mic/cam — nếu muốn tắt hoàn toàn thì:
-      // localStream?.getTracks().forEach(t=>t.stop()); localStream=null;
-      videoModal.style.display="none";
-      if(send && peerId) socket.emit("webrtc-hangup",{to:peerId});
-      peerId=null; peerName="";
-    }
-
-    btnHang.addEventListener("click", ()=> endCall(true));
-    socket.on("webrtc-hangup", ()=> endCall(false));
-
-    // đóng modal khi bấm nền tối
-    videoModal.addEventListener("click",(e)=>{ if(e.target===videoModal) endCall(true); });
-  </script>
+  });
+</script>
 </body>
 </html>

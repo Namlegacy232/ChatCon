@@ -1,5 +1,5 @@
 {
-  "name": "anon-chat-pro",
+  "name": "anon-chat-liquid",
   "version": "1.0.0",
   "main": "server.js",
   "type": "commonjs",
@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "node-fetch": "^3.3.2"
   }
 }

@@ -4,97 +4,77 @@ const { Server } = require("socket.io");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
+app.use(express.static(__dirname));
+
+// Thư mục lưu voice
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+app.use("/uploads", express.static(uploadDir));
+
 const server = http.createServer(app);
 const io = new Server(server);
 
-const PORT = 3000;
-const TIMEZONE_OFFSET = 7 * 60 * 60 * 1000; // GMT+7
-
-// Lưu tin nhắn và user
-let messages = [];
 let users = {};
+let messages = [];
 
-// Cấu hình upload voice
+// Setup upload
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/voices");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  }
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + ".webm")
 });
 const upload = multer({ storage });
 
-app.use(express.static("public"));
-app.use("/voices", express.static(path.join(__dirname, "uploads/voices")));
-
-// API upload voice
-app.post("/upload-voice", upload.single("voice"), (req, res) => {
-  const filePath = `/voices/${req.file.filename}`;
-  res.json({ url: filePath });
-  // Xóa sau 12 tiếng
+app.post("/upload", upload.single("voice"), (req, res) => {
+  const url = `/uploads/${req.file.filename}`;
+  // Xóa sau 12h
   setTimeout(() => {
-    fs.unlink(path.join(__dirname, filePath), () => {});
+    fs.unlink(path.join(uploadDir, req.file.filename), () => {});
   }, 12 * 60 * 60 * 1000);
+  res.json({ url });
 });
 
 io.on("connection", (socket) => {
-  console.log("🔗 User connected:", socket.id);
+  console.log("user joined:", socket.id);
 
-  // Gửi lại dữ liệu cũ cho user
-  socket.emit("init", { messages, users });
-
-  // Nhận user info
-  socket.on("setUser", (data) => {
-    users[socket.id] = data;
-    io.emit("updateUsers", users);
+  socket.on("join", (user) => {
+    users[socket.id] = user;
+    socket.emit("chatHistory", messages);
+    io.emit("userList", Object.values(users));
   });
 
-  // Nhận tin nhắn text
-  socket.on("chatMessage", (msg) => {
-    const message = {
+  socket.on("message", (msg) => {
+    const data = {
       id: Date.now(),
       user: users[socket.id],
-      text: msg,
-      time: new Date(Date.now() + TIMEZONE_OFFSET).toISOString(),
-      reactions: [],
+      text: msg.text || "",
+      emoji: [],
+      voice: msg.voice || null,
+      time: new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
     };
-    messages.push(message);
-    io.emit("chatMessage", message);
+    messages.push(data);
+    io.emit("message", data);
   });
 
-  // Nhận voice message
-  socket.on("voiceMessage", (voiceUrl) => {
-    const message = {
-      id: Date.now(),
-      user: users[socket.id],
-      voice: voiceUrl,
-      time: new Date(Date.now() + TIMEZONE_OFFSET).toISOString(),
-      reactions: [],
-      expireAt: Date.now() + 12 * 60 * 60 * 1000
-    };
-    messages.push(message);
-    io.emit("chatMessage", message);
+  socket.on("react", ({ msgId, emoji }) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (msg) msg.emoji.push(emoji);
+    io.emit("updateMessage", msg);
   });
 
-  // Reaction emoji
-  socket.on("reactMessage", ({ msgId, emoji }) => {
-    let msg = messages.find(m => m.id === msgId);
-    if (msg) {
-      msg.reactions.push({ user: users[socket.id], emoji });
-      io.emit("updateMessage", msg);
-    }
+  socket.on("updateUser", (user) => {
+    users[socket.id] = user;
+    io.emit("userList", Object.values(users));
   });
 
   socket.on("disconnect", () => {
     delete users[socket.id];
-    io.emit("updateUsers", users);
-    console.log("❌ User disconnected:", socket.id);
+    io.emit("userList", Object.values(users));
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 Server chạy tại http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log("Server running on port " + PORT));
